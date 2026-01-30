@@ -115,6 +115,27 @@ const RECIPES: Recipe[] = [
     time: "20 min",
     tags: ["sheet-pan", "minimal", "green"],
   },
+  {
+    id: "r7",
+    title: "Paneer Tikka Masala",
+    mood: "comfort",
+    time: "35 min",
+    tags: ["indian", "spicy", "creamy"],
+  },
+  {
+    id: "r8",
+    title: "Coconut Malabar Curry",
+    mood: "cozy",
+    time: "40 min",
+    tags: ["indian", "coastal", "aromatic"],
+  },
+  {
+    id: "r9",
+    title: "Street-Style Pav Bhaji",
+    mood: "adventurous",
+    time: "30 min",
+    tags: ["indian", "street-food", "buttery"],
+  },
 ];
 
 function cn(...classes: Array<string | false | undefined | null>) {
@@ -362,44 +383,49 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3">
-                {filtered.slice(0, 3).map((r) => (
-                  <div
-                    key={r.id}
-                    className="rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm transition hover:translate-y-[-1px] hover:shadow"
-                    data-testid={`card-recipe-${r.id}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium leading-tight" data-testid={`text-recipe-title-${r.id}`}>
-                          {r.title}
+                <div className="mt-4 grid gap-3 transition-all duration-500">
+                  {filtered.slice(0, 3).map((r) => (
+                    <div
+                      key={r.id}
+                      className="group rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm transition-all duration-300 hover:translate-y-[-2px] hover:shadow-md hover:border-primary/20 animate-in fade-in slide-in-from-bottom-2"
+                      data-testid={`card-recipe-${r.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium leading-tight group-hover:text-primary transition-colors" data-testid={`text-recipe-title-${r.id}`}>
+                            {r.title}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-recipe-time-${r.id}`}>
+                            {r.time}
+                          </div>
                         </div>
-                        <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-recipe-time-${r.id}`}>
-                          {r.time}
-                        </div>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className="rounded-full border border-border/70 bg-secondary/60"
-                        data-testid={`badge-recipe-mood-${r.id}`}
-                      >
-                        {r.mood}
-                      </Badge>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {r.tags.slice(0, 3).map((t) => (
-                        <span
-                          key={t}
-                          className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[11px] text-foreground/80"
-                          data-testid={`tag-recipe-${r.id}-${t}`}
+                        <Badge
+                          variant="secondary"
+                          className="rounded-full border border-border/70 bg-secondary/60 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
+                          data-testid={`badge-recipe-mood-${r.id}`}
                         >
-                          {t}
-                        </span>
-                      ))}
+                          {r.mood}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {r.tags.slice(0, 3).map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[11px] text-foreground/80 group-hover:border-primary/10 transition-colors"
+                            data-testid={`tag-recipe-${r.id}-${t}`}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                  {filtered.length === 0 && (
+                    <div className="py-10 text-center text-sm text-muted-foreground animate-in fade-in">
+                      No matches for this mood and search combo.
+                    </div>
+                  )}
+                </div>
 
               <div className="mt-4 rounded-2xl border border-border/70 bg-background/60 p-4 text-sm text-muted-foreground" data-testid="panel-placeholder">
                 Placeholder for future interactions: recipe details, filters, and a\n                “save shortlist” panel.
@@ -435,12 +461,12 @@ export default function Home() {
             {filtered.map((r) => (
               <Card
                 key={r.id}
-                className="mc-card border-border/70 bg-card/80 p-4 backdrop-blur transition hover:translate-y-[-1px] hover:shadow-md"
+                className="group mc-card border-border/70 bg-card/80 p-4 backdrop-blur transition-all duration-300 hover:translate-y-[-4px] hover:shadow-lg hover:border-primary/30 animate-in fade-in zoom-in-95"
                 data-testid={`card-explore-${r.id}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="mc-serif text-lg font-semibold leading-tight" data-testid={`text-explore-title-${r.id}`}>
+                    <div className="mc-serif text-lg font-semibold leading-tight group-hover:text-primary transition-colors" data-testid={`text-explore-title-${r.id}`}>
                       {r.title}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-explore-time-${r.id}`}>
@@ -449,7 +475,7 @@ export default function Home() {
                   </div>
                   <Badge
                     variant="secondary"
-                    className="rounded-full border border-border/70 bg-secondary/60"
+                    className="rounded-full border border-border/70 bg-secondary/60 group-hover:bg-primary/10 transition-colors"
                     data-testid={`badge-explore-mood-${r.id}`}
                   >
                     {r.mood}
