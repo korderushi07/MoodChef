@@ -1,16 +1,27 @@
-import { useMemo, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, Link } from "wouter";
 import {
   ArrowRight,
   ChefHat,
   Dices,
   Sparkles,
   UtensilsCrossed,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RecipeCard } from "@/components/recipe-card";
+import { type Recipe } from "@shared/schema";
+import RecipeDetailPage from "@/pages/recipe-detail";
 
 type MoodKey =
   | "cozy"
@@ -20,7 +31,7 @@ type MoodKey =
   | "adventurous"
   | "quick";
 
-type Recipe = {
+type LegacyRecipe = {
   id: string;
   title: string;
   mood: MoodKey;
@@ -72,72 +83,6 @@ const MOODS: Array<{
   },
 ];
 
-const RECIPES: Recipe[] = [
-  {
-    id: "r1",
-    title: "Miso Butter Noodles",
-    mood: "comfort",
-    time: "15 min",
-    tags: ["savory", "umami", "pantry"],
-  },
-  {
-    id: "r2",
-    title: "Lemony Chickpea Salad",
-    mood: "fresh",
-    time: "12 min",
-    tags: ["no-cook", "crunchy", "bright"],
-  },
-  {
-    id: "r3",
-    title: "One-Pot Cozy Lentil Stew",
-    mood: "cozy",
-    time: "45 min",
-    tags: ["hearty", "make-ahead", "cozy"],
-  },
-  {
-    id: "r4",
-    title: "Spicy Gochujang Chicken Bowl",
-    mood: "energized",
-    time: "25 min",
-    tags: ["spicy", "protein", "weeknight"],
-  },
-  {
-    id: "r5",
-    title: "Crispy Tofu Tacos w/ Slaw",
-    mood: "adventurous",
-    time: "30 min",
-    tags: ["crunchy", "street-style", "zesty"],
-  },
-  {
-    id: "r6",
-    title: "Sheet-Pan Pesto Veg + Sausage",
-    mood: "quick",
-    time: "20 min",
-    tags: ["sheet-pan", "minimal", "green"],
-  },
-  {
-    id: "r7",
-    title: "Paneer Tikka Masala",
-    mood: "comfort",
-    time: "35 min",
-    tags: ["indian", "spicy", "creamy"],
-  },
-  {
-    id: "r8",
-    title: "Coconut Malabar Curry",
-    mood: "cozy",
-    time: "40 min",
-    tags: ["indian", "coastal", "aromatic"],
-  },
-  {
-    id: "r9",
-    title: "Street-Style Pav Bhaji",
-    mood: "adventurous",
-    time: "30 min",
-    tags: ["indian", "street-food", "buttery"],
-  },
-];
-
 function cn(...classes: Array<string | false | undefined | null>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -161,7 +106,7 @@ function MoodPill({
       className={cn(
         "group relative inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition",
         "border bg-card/70 backdrop-blur",
-        "hover:shadow-sm hover:translate-y-[-1px] active:translate-y-[0px]",
+        "hover:shadow-sm hover:-translate-y-px active:translate-y-0",
         selected
           ? "border-primary/30 bg-primary/10 text-foreground shadow-sm"
           : "border-border text-foreground/80",
@@ -180,29 +125,76 @@ function MoodPill({
 }
 
 export default function Home() {
+  const [, navigate] = useLocation();
   const [activeMood, setActiveMood] = useState<MoodKey | "all">("all");
   const [query, setQuery] = useState("");
+  const [maxCookingTime, setMaxCookingTime] = useState<number | undefined>(undefined);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
+  // Fetch recipes on mount
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        const response = await fetch("/api/recipes");
+        if (!response.ok) throw new Error("Failed to fetch recipes");
+        const data = await response.json();
+        setRecipes(data);
+      } catch (error) {
+        console.error("Error fetching recipes:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecipes();
+  }, []);
+
+  // Filter recipes based on search and cooking time
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return RECIPES.filter((r) => {
-      const moodOk = activeMood === "all" ? true : r.mood === activeMood;
+    return recipes.filter((r) => {
       const queryOk =
         q.length === 0
           ? true
-          : [r.title, r.time, ...r.tags, r.mood].some((s) =>
-              s.toLowerCase().includes(q),
-            );
-      return moodOk && queryOk;
+          : [r.title, r.description, r.cuisine, r.dietType]
+              .filter((s) => s != null)
+              .some((s) => String(s).toLowerCase().includes(q));
+      
+      // Calculate total cooking time
+      const totalTime = r.prepTime + r.cookTime;
+      const timeOk = maxCookingTime === undefined ? true : totalTime <= maxCookingTime;
+      
+      return queryOk && timeOk;
     });
-  }, [activeMood, query]);
+  }, [recipes, query, maxCookingTime]);
 
   const randomPick = () => {
-    const list = filtered.length ? filtered : RECIPES;
+    const list = filtered.length ? filtered : recipes;
+    if (list.length === 0) return;
     const choice = list[Math.floor(Math.random() * list.length)];
-    setQuery(choice.title);
-    setActiveMood(choice.mood);
+    setSelectedRecipe(choice);
   };
+
+  // Preload images for smoother UI (improves perceived load time)
+  useEffect(() => {
+    if (!recipes || recipes.length === 0) return;
+    const urls = recipes.map((r) => r.imageUrl).filter(Boolean) as string[];
+    urls.forEach((u) => {
+      const img = new Image();
+      img.src = u;
+    });
+  }, [recipes]);
+
+  if (selectedRecipe) {
+    return (
+      <RecipeDetailPage
+        recipeId={selectedRecipe.id}
+        onBack={() => setSelectedRecipe(null)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-dvh mc-gradient">
@@ -284,14 +276,14 @@ export default function Home() {
                 data-testid="badge-hackathon-ready"
                 className="rounded-full border border-border/70 bg-card/70 backdrop-blur"
               >
-                <Sparkles className="mr-1.5 size-3.5" /> Hackathon-ready skeleton
+                <Sparkles className="mr-1.5 size-3.5" /> AI Customize
               </Badge>
               <Badge
                 variant="outline"
                 data-testid="badge-no-backend"
                 className="rounded-full border-border/70 bg-transparent"
               >
-                Frontend only
+                Fresh recipes!!
               </Badge>
             </div>
 
@@ -307,8 +299,7 @@ export default function Home() {
               className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground"
               data-testid="text-hero-subtitle"
             >
-              Pick a vibe, scan a curated set of recipes, and build a quick shortlist.
-              This is a clean UI foundation—no complex logic yet.
+              Explore delicious recipes by cuisine, dietary preference, and cooking time. Build your perfect meal plan with interactive ingredient checklists.
             </p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -316,11 +307,29 @@ export default function Home() {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by dish, tag, or time…"
+                  placeholder="Search by dish, cuisine, or diet…"
                   data-testid="input-search"
                   className="h-11 rounded-full border-border/70 bg-card/70 pl-4 pr-4 shadow-sm backdrop-blur focus-visible:ring-ring"
                 />
               </div>
+              
+              <Select 
+                value={maxCookingTime ? maxCookingTime.toString() : "all"}
+                onValueChange={(value) => setMaxCookingTime(value === "all" ? undefined : parseInt(value))}
+              >
+                <SelectTrigger className="h-11 w-40 rounded-full border-border/70 bg-card/70 shadow-sm backdrop-blur">
+                  <Clock className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Cooking time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any time</SelectItem>
+                  <SelectItem value="15">Under 15 min</SelectItem>
+                  <SelectItem value="30">Under 30 min</SelectItem>
+                  <SelectItem value="45">Under 45 min</SelectItem>
+                  <SelectItem value="60">Under 60 min</SelectItem>
+                </SelectContent>
+              </Select>
+
               <Button
                 size="lg"
                 className="h-11 rounded-full"
@@ -354,12 +363,21 @@ export default function Home() {
                 <UtensilsCrossed className="size-4" />
                 <span>
                   Showing <span className="font-medium text-foreground">{filtered.length}</span> recipe
-                  {filtered.length === 1 ? "" : "s"}
+                  {filtered.length === 1 ? "" : "s"} out of {recipes.length}
                 </span>
               </div>
+              {maxCookingTime && (
+                <>
+                  <span aria-hidden>•</span>
+                  <div className="flex items-center gap-2 text-primary font-medium">
+                    <Clock className="size-4" />
+                    <span>Under {maxCookingTime} min</span>
+                  </div>
+                </>
+              )}
               <span aria-hidden className="hidden sm:inline">•</span>
               <div data-testid="text-hint">
-                Tip: try “cozy” + “make-ahead” to plan ahead.
+                Tip: use the filters to find your perfect recipe.
               </div>
             </div>
           </div>
@@ -383,53 +401,21 @@ export default function Home() {
                 </div>
               </div>
 
-                <div className="mt-4 grid gap-3 transition-all duration-500">
-                  {filtered.slice(0, 3).map((r) => (
-                    <div
-                      key={r.id}
-                      className="group rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm transition-all duration-300 hover:translate-y-[-2px] hover:shadow-md hover:border-primary/20 animate-in fade-in slide-in-from-bottom-2"
-                      data-testid={`card-recipe-${r.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-medium leading-tight group-hover:text-primary transition-colors" data-testid={`text-recipe-title-${r.id}`}>
-                            {r.title}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-recipe-time-${r.id}`}>
-                            {r.time}
-                          </div>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className="rounded-full border border-border/70 bg-secondary/60 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
-                          data-testid={`badge-recipe-mood-${r.id}`}
-                        >
-                          {r.mood}
-                        </Badge>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {r.tags.slice(0, 3).map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[11px] text-foreground/80 group-hover:border-primary/10 transition-colors"
-                            data-testid={`tag-recipe-${r.id}-${t}`}
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {filtered.length === 0 && (
-                    <div className="py-10 text-center text-sm text-muted-foreground animate-in fade-in">
-                      No matches for this mood and search combo.
-                    </div>
-                  )}
-                </div>
-
-              <div className="mt-4 rounded-2xl border border-border/70 bg-background/60 p-4 text-sm text-muted-foreground" data-testid="panel-placeholder">
-                Placeholder for future interactions: recipe details, filters, and a\n                “save shortlist” panel.
+              <div className="mt-4 grid gap-3 transition-all duration-500">
+                {filtered.slice(0, 1).map((r) => (
+                  <RecipeCard
+                    key={r.id}
+                    recipe={r}
+                    onClick={() => setSelectedRecipe(r)}
+                  />
+                ))}
+                {filtered.length === 0 && (
+                  <div className="py-10 text-center text-sm text-muted-foreground animate-in fade-in">
+                    No matches for your search.
+                  </div>
+                )}
               </div>
+
             </Card>
           </aside>
         </section>
@@ -441,7 +427,7 @@ export default function Home() {
                 Explore recipes
               </h2>
               <p className="mt-1 text-sm text-muted-foreground" data-testid="text-explore-subtitle">
-                A simple grid you can wire up to real data later.
+                Discover delicious recipes with beautiful images and essential ingredients.
               </p>
             </div>
             <Button
@@ -449,75 +435,40 @@ export default function Home() {
               className="rounded-full"
               data-testid="button-clear-filters"
               onClick={() => {
-                setActiveMood("all");
                 setQuery("");
+                setMaxCookingTime(undefined);
               }}
             >
-              Clear
+              Clear Filters
             </Button>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((r) => (
-              <Card
-                key={r.id}
-                className="group mc-card border-border/70 bg-card/80 p-4 backdrop-blur transition-all duration-300 hover:translate-y-[-4px] hover:shadow-lg hover:border-primary/30 animate-in fade-in zoom-in-95"
-                data-testid={`card-explore-${r.id}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="mc-serif text-lg font-semibold leading-tight group-hover:text-primary transition-colors" data-testid={`text-explore-title-${r.id}`}>
-                      {r.title}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-explore-time-${r.id}`}>
-                      {r.time}
-                    </div>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className="rounded-full border border-border/70 bg-secondary/60 group-hover:bg-primary/10 transition-colors"
-                    data-testid={`badge-explore-mood-${r.id}`}
-                  >
-                    {r.mood}
-                  </Badge>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {r.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[11px] text-foreground/80"
-                      data-testid={`tag-explore-${r.id}-${t}`}
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-4 flex items-center justify-between">
-                  <Button
-                    variant="secondary"
-                    className="rounded-full"
-                    data-testid={`button-view-${r.id}`}
-                    onClick={() => {
-                      // Placeholder: open recipe modal
-                    }}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    className="rounded-full"
-                    data-testid={`button-save-${r.id}`}
-                    onClick={() => {
-                      // Placeholder: save to shortlist
-                    }}
-                  >
-                    Save
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {loading ? (
+            <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="h-96 animate-pulse bg-muted" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="mt-10 text-center py-12">
+              <UtensilsCrossed className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No recipes found</h3>
+              <p className="text-muted-foreground mb-6">Try adjusting your search</p>
+              <Button onClick={() => setQuery("")} variant="outline">
+                Clear Search
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((recipe) => (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  onClick={() => setSelectedRecipe(recipe)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         <section id="about" className="mt-12 md:mt-16">
@@ -531,7 +482,7 @@ export default function Home() {
                   MoodChef is a UI-first prototype: a strong layout, responsive spacing, and clear\n                  components you can extend with real recipes, accounts, and saved lists later.\n                </p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-sm text-muted-foreground" data-testid="panel-about-placeholder">
-                Placeholder for future: “Random dish” routing, recipe detail page, and\n                onboarding flow.
+              
               </div>
             </div>
           </Card>
@@ -540,7 +491,7 @@ export default function Home() {
         <footer className="mt-14 border-t border-border/70 pt-8 text-sm text-muted-foreground">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
             <div data-testid="text-footer-left">
-              <span className="mc-serif font-semibold text-foreground">MoodChef</span> \u00b7 built for hackathon speed
+              <span className="mc-serif font-semibold text-foreground">MoodChef</span> 
             </div>
             <div className="flex items-center gap-3" data-testid="section-footer-links">
               <a
