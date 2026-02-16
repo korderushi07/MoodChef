@@ -18,6 +18,8 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
     required?: boolean;
   }>) || [];
   const requiredIngredients = ingredients.filter((ing) => ing.required).length;
+
+  
     // Map recipe titles to images in client/public
   const TITLE_TO_IMAGE: Record<string, string> = {
     "Butter Chicken": "/butter-chicken.jpg",
@@ -27,7 +29,7 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
     "Pani Puri": "/pani-puri.webp",
     "Tandoor Chicken": "/tandoor-chicken.jpg",
   };
-  
+
     const imageSrc =
   TITLE_TO_IMAGE[recipe.title] ||
   (typeof recipe.imageUrl === "string" && recipe.imageUrl.startsWith("/")
