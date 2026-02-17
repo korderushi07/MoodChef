@@ -471,28 +471,20 @@ export default function Home() {
           )}
         </section>
 
-        <section id="about" className="mt-12 md:mt-16">
-          <Card className="mc-card border-border/70 bg-card/80 p-6 backdrop-blur" data-testid="card-about">
-            <div className="grid gap-4 md:grid-cols-[1fr_.9fr] md:items-center">
-              <div>
-                <h3 className="mc-serif text-2xl font-semibold" data-testid="text-about-title">
-                  Built to iterate fast
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground" data-testid="text-about-body">
-                  MoodChef is a UI-first prototype: a strong layout, responsive spacing, and clear\n                  components you can extend with real recipes, accounts, and saved lists later.\n                </p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-sm text-muted-foreground" data-testid="panel-about-placeholder">
-              
-              </div>
-            </div>
-          </Card>
-        </section>
-
         <footer className="mt-14 border-t border-border/70 pt-8 text-sm text-muted-foreground">
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-center justify-center gap-3 text-center">
             <div data-testid="text-footer-left">
-              <span className="mc-serif font-semibold text-foreground">MoodChef</span> 
-            </div>
+  <span className="mc-serif font-semibold text-foreground">MoodChef</span>
+<span className="ml-2 text-muted-foreground">
+  <span className="inline-block animate-pulse text-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.6)]">
+  ❤️
+</span>{" "}
+   Cooked in Code n Cravings - Nehal Mehta & Rushikesh Korde
+</span>
+
+</div>
+
+
             <div className="flex items-center gap-3" data-testid="section-footer-links">
               <a
                 href="#explore"
