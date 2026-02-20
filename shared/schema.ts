@@ -57,6 +57,7 @@ export const recipes = pgTable("recipes", {
   imageUrl: text("image_url"),
   rating: numeric("rating", { precision: 2, scale: 1 }).default("0"),
   tags: jsonb("tags").default(sql`'[]'::jsonb`), // Array of tag strings
+  mood: jsonb("mood").default(sql`'[]'::jsonb`), // Array of mood strings e.g. ["Cozy", "Comfort"]
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
