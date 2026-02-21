@@ -1,4 +1,4 @@
-# 🍳 MoodChef
+# 🍳 MoodChef 
 
 ### *The Emotional Intelligence of Home Cooking*
 
