@@ -19,39 +19,53 @@ export default function RecipeExplorer() {
     cuisine: "",
     dietType: "",
     maxTime: undefined,
+    mood: "", // ← new
   });
 
-  // Fetch recipes from API
+  // Fetch recipes from API (cuisine/dietType/maxTime/search go to server)
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
         setLoading(true);
         const params = new URLSearchParams();
-        if (filters.cuisine) params.append("cuisine", filters.cuisine);
+        if (filters.cuisine)  params.append("cuisine",  filters.cuisine);
         if (filters.dietType) params.append("dietType", filters.dietType);
-        if (filters.maxTime) params.append("maxTime", filters.maxTime.toString());
-        if (filters.search) params.append("search", filters.search);
+        if (filters.maxTime)  params.append("maxTime",  filters.maxTime.toString());
+        if (filters.search)   params.append("search",   filters.search);
+        // NOTE: mood is filtered client-side below (no API param needed)
 
         const response = await fetch(`/api/recipes?${params}`);
         if (!response.ok) throw new Error("Failed to fetch recipes");
-        const data = await response.json();
+        const data: Recipe[] = await response.json();
         setRecipes(data);
-        setFilteredRecipes(data);
       } catch (error) {
         console.error("Error fetching recipes:", error);
         setRecipes([]);
-        setFilteredRecipes([]);
       } finally {
         setLoading(false);
       }
     };
 
-    const timer = setTimeout(() => {
-      fetchRecipes();
-    }, 300);
-
+    const timer = setTimeout(fetchRecipes, 300);
     return () => clearTimeout(timer);
-  }, [filters]);
+  }, [filters.cuisine, filters.dietType, filters.maxTime, filters.search]);
+  // ↑ mood intentionally excluded — handled client-side
+
+  // Client-side mood filter applied on top of server results
+  useEffect(() => {
+    if (!filters.mood) {
+      setFilteredRecipes(recipes);
+    } else {
+      setFilteredRecipes(
+        recipes.filter((recipe) => {
+          const recipeMood = (recipe as any).mood;
+          if (!recipeMood) return false;
+          if (Array.isArray(recipeMood)) return recipeMood.includes(filters.mood);
+          return recipeMood === filters.mood;
+        })
+      );
+    }
+  }, [recipes, filters.mood]);
 
   const handleRecipeClick = useCallback((recipe: Recipe) => {
     setSelectedRecipe(recipe);
@@ -90,10 +104,10 @@ export default function RecipeExplorer() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Filters */}
+        {/* Filters (includes mood buttons) */}
         <RecipeFilters filters={filters} onFiltersChange={setFilters} />
 
-        {/* Loading State */}
+        {/* Loading */}
         {loading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
@@ -114,12 +128,7 @@ export default function RecipeExplorer() {
             </p>
             <Button
               onClick={() =>
-                setFilters({
-                  search: "",
-                  cuisine: "",
-                  dietType: "",
-                  maxTime: undefined,
-                })
+                setFilters({ search: "", cuisine: "", dietType: "", maxTime: undefined, mood: "" })
               }
               variant="outline"
             >
@@ -139,10 +148,11 @@ export default function RecipeExplorer() {
               ))}
             </div>
 
-            {/* Results Info */}
+            {/* Results count */}
             <div className="text-center mt-8 text-muted-foreground">
               Showing {filteredRecipes.length} recipe
               {filteredRecipes.length !== 1 ? "s" : ""}
+              {filters.mood ? ` with a "${filters.mood}" mood` : ""}
             </div>
           </>
         )}
